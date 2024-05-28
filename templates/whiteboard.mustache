@@ -1,0 +1,245 @@
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h3 {
+        font-size: 26px;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    .boards-container {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .board,
+    .new-board {
+        width: 200px;
+        height: 250px;
+        background-color: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .board:hover,
+    .new-board:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+    }
+
+    .new-board {
+        background-color: #007bff;
+        color: #fff;
+        font-size: 2.5em;
+    }
+
+    .new-board span {
+        font-size: 48px;
+        margin-bottom: 10px;
+    }
+
+    .new-board p {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .board img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+    }
+
+    .board-info {
+        padding: 10px;
+    }
+
+    .board-info h6 {
+        margin: 0;
+        font-size: 18px;
+        color: #333;
+    }
+</style>
+
+<div class="vh-100">
+    <h3>Boards in this team</h3>
+    <div id="miro-board-container" class="p-3 d-flex gap-3 flex-wrap boards-container" style="width: 100%;">
+        <div class="board new-board" data-toggle="modal" data-target="#createBoardModal">
+            <span>+</span>
+            <p>New board</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="createBoardModal" tabindex="-1" aria-labelledby="createBoardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createBoardModalLabel">Create New Board</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="boardForm">
+                    <div class="form-group">
+                        <label for="name">Board Name</label>
+                        <input class="form-control" type="text" placeholder="Enter board name" id="name" name="name"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Short Description</label>
+                        <textarea class="form-control" name="description" id="description"
+                            placeholder="Describe your board"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="sharingAccess">Sharing Access</label>
+                        <input class="form-control" type="text" id="sharingAccess" name="sharingAccess" value="View"
+                            disabled>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.6.0/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    // Replace with the access token obtained from OAuth flow
+    const accessToken = '{{token}}';
+    const existingBoard = document.querySelectorAll('.existingBoard');
+
+
+    function addEventListeners() {
+        const existingBoards = document.querySelectorAll('.existingBoard');
+        existingBoards.forEach(element => {
+            element.addEventListener('click', function (e) {
+                const boardLink = e.currentTarget.dataset.src;
+                console.log(boardLink);
+                var embed = document.createElement('embed');
+                embed.src = boardLink;
+                embed.height = '100%';
+                embed.width = "100%";
+                embed.classList.add('vh-100');
+                document.getElementById('miro-board-container').innerHTML = "";
+                document.getElementById('miro-board-container').append(embed);
+
+            });
+        });
+    }
+
+    fetch("https://api.miro.com/v2/boards", {
+        method: "GET", // Use GET method to fetch board information
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+        },
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            console.log(data.data);
+            const boards = data.data;
+            if (boards) {
+                boards.forEach(item => {
+                    const board = document.createElement("div");
+                    const link = document.createElement("div");
+                    link.classList.add('existingBoard');
+                    link.dataset.src = item.viewLink;
+                    board.classList.add("board");
+
+                    const img = document.createElement("img");
+                    img.src = item.picture ? item.picture.imageURL : 'https://via.placeholder.com/200x150';
+
+                    const boardInfo = document.createElement("div");
+                    boardInfo.classList.add("board-info");
+                    const h6 = document.createElement("h6");
+                    h6.textContent = item.name;
+
+                    boardInfo.append(h6);
+                    board.append(img);
+                    board.append(boardInfo);
+                    link.append(board);
+                    document.getElementById("miro-board-container").append(link);
+                });
+                addEventListeners();
+            }
+        })
+        .catch((error) => console.error("Error fetching board information:", error));
+
+    const form = document.getElementById('boardForm');
+    form.addEventListener('submit', createBoard)
+
+
+    function createBoard(event) {
+        event.preventDefault();
+
+        const formdata = new FormData(form);
+        const boardName = formdata.get('name');
+        const description = formdata.get('description');
+        document.getElementById('createBoardModal').classList.remove('show');
+        document.querySelectorAll('.modal-backdrop').forEach(element=>{
+            element.classList.remove('show');
+        });
+
+
+        fetch("https://api.miro.com/v1/boards", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                policy: { sharingPolicy: { access: 'view' } },
+                name: boardName,
+                description: description
+            }) // Example payload for creating a new board
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                console.log(data);
+                // Refresh or add the new board to the container
+
+                const link = document.createElement("a");
+                link.href = data.viewLink;
+                link.target = "_blank";
+                const board = document.createElement("div");
+                board.classList.add("board");
+
+                const img = document.createElement("img");
+                img.src = data.picture ? data.picture.imageURL : 'https://via.placeholder.com/200x150';
+
+                const boardInfo = document.createElement("div");
+                boardInfo.classList.add("board-info");
+                const h6 = document.createElement("h6");
+                h6.textContent = data.name;
+
+                boardInfo.append(h6);
+                board.append(img);
+                board.append(boardInfo);
+                link.append(board);
+                document.getElementById("miro-board-container").append(link);
+            })
+            .catch((error) => console.error("Error creating board:", error));
+    }
+</script>
